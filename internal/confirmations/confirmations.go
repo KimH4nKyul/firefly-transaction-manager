@@ -429,7 +429,7 @@ func (bcm *blockConfirmationManager) checkReceipt(pending *pendingItem, blocks *
 		log.L(bcm.ctx).Infof("Receipt for transaction %s downloaded. BlockNumber=%d BlockHash=%s", pending.transactionHash, pending.blockNumber, pending.blockHash)
 		// Notify of the receipt
 		if pending.receiptCallback != nil {
-			pending.receiptCallback(bcm.ctx, res)
+			go pending.receiptCallback(bcm.ctx, res)
 		}
 
 		if bcm.requiredConfirmations == 0 {
@@ -563,7 +563,7 @@ func (bcm *blockConfirmationManager) dispatchConfirmed(item *pendingItem) {
 	bcm.removeItem(pendingKey, false)
 
 	log.L(bcm.ctx).Infof("Confirmed with %d confirmations event=%s", len(item.confirmations), pendingKey)
-	item.confirmedCallback(bcm.ctx, item.copyConfirmations() /* a safe copy outside of our cache */)
+	go item.confirmedCallback(bcm.ctx, item.copyConfirmations() /* a safe copy outside of our cache */)
 }
 
 // walkChain goes through each event and sees whether it's valid,
