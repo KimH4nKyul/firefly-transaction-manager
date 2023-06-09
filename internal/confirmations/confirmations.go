@@ -236,10 +236,21 @@ func (bcm *blockConfirmationManager) Notify(n *Notification) error {
 		if n.Event == nil || n.Event.ID.ListenerID == nil || n.Event.ID.TransactionHash == "" || n.Event.ID.BlockHash == "" {
 			return i18n.NewError(bcm.ctx, tmmsgs.MsgInvalidConfirmationRequest, n)
 		}
-	case NewTransaction, RemovedTransaction:
+	case NewTransaction:
 		if n.Transaction == nil || n.Transaction.TransactionHash == "" {
 			return i18n.NewError(bcm.ctx, tmmsgs.MsgInvalidConfirmationRequest, n)
 		}
+		log.L(bcm.ctx).Infof("Processing notification for hash %s", n.Transaction.TransactionHash)
+		newItem := n.transactionPendingItem()
+		bcm.addOrReplaceItem(newItem)
+		bcm.staleReceipts[newItem.getKey()] = true
+		return nil
+	case RemovedTransaction:
+		if n.Transaction == nil || n.Transaction.TransactionHash == "" {
+			return i18n.NewError(bcm.ctx, tmmsgs.MsgInvalidConfirmationRequest, n)
+		}
+		bcm.removeItem(n.transactionPendingItem().getKey(), true)
+		return nil
 	case ListenerRemoved:
 		if n.RemovedListener == nil || n.RemovedListener.Completed == nil {
 			return i18n.NewError(bcm.ctx, tmmsgs.MsgInvalidConfirmationRequest, n)
@@ -393,15 +404,8 @@ func (bcm *blockConfirmationManager) processNotifications(notifications []*Notif
 			if err := bcm.walkChainForItem(newItem, blocks); err != nil {
 				return err
 			}
-		case NewTransaction:
-			log.L(bcm.ctx).Infof("Processing notification for hash %s", n.Transaction.TransactionHash)
-			newItem := n.transactionPendingItem()
-			bcm.addOrReplaceItem(newItem)
-			bcm.staleReceipts[newItem.getKey()] = true
 		case RemovedEventLog:
 			bcm.removeItem(n.eventPendingItem().getKey(), true)
-		case RemovedTransaction:
-			bcm.removeItem(n.transactionPendingItem().getKey(), true)
 		default:
 			// Note that streamStopped is handled in the polling loop directly
 			log.L(bcm.ctx).Warnf("Unexpected notification type: %d", n.NotificationType)
