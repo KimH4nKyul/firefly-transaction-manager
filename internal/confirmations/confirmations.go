@@ -384,7 +384,7 @@ func (bcm *blockConfirmationManager) staleReceiptCheck() {
 }
 
 func (bcm *blockConfirmationManager) processNotifications(notifications []*Notification, blocks *blockState) error {
-
+	log.L(bcm.ctx).Infof("Processing %d notifications", len(notifications))
 	for _, n := range notifications {
 		switch n.NotificationType {
 		case NewEventLog:
@@ -394,6 +394,7 @@ func (bcm *blockConfirmationManager) processNotifications(notifications []*Notif
 				return err
 			}
 		case NewTransaction:
+			log.L(bcm.ctx).Infof("Processing notification for hash %s", n.Transaction.TransactionHash)
 			newItem := n.transactionPendingItem()
 			bcm.addOrReplaceItem(newItem)
 			bcm.staleReceipts[newItem.getKey()] = true
